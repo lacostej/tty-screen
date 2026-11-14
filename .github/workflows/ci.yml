@@ -15,11 +15,13 @@ on:
       - "*.md"
 jobs:
   tests:
-    name: Ruby ${{ matrix.ruby }}
+    name: Ruby ${{ matrix.ruby }}${{ contains(matrix.os, 'windows') && ' on Windows' || '' }}
     runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - ubuntu-latest
         ruby:
           - "2.0"
           - "2.1"
@@ -43,6 +45,8 @@ jobs:
             coverage: true
           - ruby: jruby-9.2
             os: ubuntu-22.04
+          - ruby: "3.4"
+            os: windows-latest
     env:
       COVERAGE: ${{ matrix.coverage }}
       COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
