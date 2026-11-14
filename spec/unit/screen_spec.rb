@@ -271,6 +271,20 @@ RSpec.describe TTY::Screen do
       end
     end
 
+    it "doesn't detect size when the standard streams don't support ioctl" do
+      replace_standard_streams(StringIO.new) do
+        expect(screen.size_from_ioctl).to eq(nil)
+      end
+    end
+
+    it "detects size from a stream that supports ioctl" do
+      replace_standard_streams(StringIO.new) do
+        $stdin = Output.new(StringIO.new)
+
+        expect(screen.size_from_ioctl).to eq([51, 211])
+      end
+    end
+
     it "detects no columns" do
       allow(screen).to receive(:ioctl?).and_return(true)
 
@@ -291,6 +305,8 @@ RSpec.describe TTY::Screen do
   end
 
   describe ".size_from_readline" do
+    before { stub_const("Readline", Module.new) }
+
     it "doesn't detect size on non-tty output" do
       allow(screen.output).to receive(:tty?).and_return(false)
 
@@ -299,24 +315,22 @@ RSpec.describe TTY::Screen do
     end
 
     it "doesn't detect size when the readline fails to load" do
-      undefine_const(:Readline) do
-        allow(screen.output).to receive(:tty?).and_return(true)
-        allow(screen).to receive(:require).with("readline").and_raise(LoadError)
+      hide_const("Readline")
+      allow(screen.output).to receive(:tty?).and_return(true)
+      allow(screen).to receive(:require).with("readline").and_raise(LoadError)
 
-        expect(screen.size_from_readline).to eq(nil)
-        expect(screen).to have_received(:require).with("readline")
-      end
+      expect(screen.size_from_readline).to eq(nil)
+      expect(screen).to have_received(:require).with("readline")
     end
 
     it "warns in verbose mode when the readline fails to load" do
-      undefine_const(:Readline) do
-        allow(screen.output).to receive(:tty?).and_return(true)
-        allow(screen).to receive(:require).with("readline").and_raise(LoadError)
+      hide_const("Readline")
+      allow(screen.output).to receive(:tty?).and_return(true)
+      allow(screen).to receive(:require).with("readline").and_raise(LoadError)
 
-        expect {
-          screen.size_from_readline(verbose: true)
-        }.to output("no readline gem\n").to_stderr
-      end
+      expect {
+        screen.size_from_readline(verbose: true)
+      }.to output("no readline gem\n").to_stderr
     end
 
     it "doesn't detect size when the get_screen_size method is missing" do
